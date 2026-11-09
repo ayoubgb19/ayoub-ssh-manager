@@ -47,8 +47,10 @@ def xray_config(d):
    clients.append(c)
   cfg={'clients':clients}
   if typ=='vless': cfg['decryption']='none'
-  ins.append({'tag':typ,'listen':'127.0.0.1','port':port,'protocol':typ,'settings':cfg,
+  ins.append({'tag':typ+'-ws','listen':'127.0.0.1','port':port,'protocol':typ,'settings':cfg,
               'streamSettings':{'network':'ws','wsSettings':{'path':'/'+typ}}})
+  ins.append({'tag':typ+'-grpc','listen':'127.0.0.1','port':port+100,'protocol':typ,'settings':cfg,
+              'streamSettings':{'network':'grpc','grpcSettings':{'serviceName':typ+'-grpc'}}})
  return {'log':{'loglevel':'warning'},'inbounds':ins,'outbounds':[{'protocol':'freedom'}]}
 def apply(d):
  XR.parent.mkdir(parents=True,exist_ok=True)
@@ -72,6 +74,28 @@ def link(typ,name,a):
        'net':'ws','type':'none','host':host,'path':'/vmess','tls':'tls','sni':host}
   return 'vmess://'+base64.b64encode(json.dumps(obj,separators=(',',':')).encode()).decode()
  return f'{typ}://{secret}@{host}:443?'+('encryption=none&' if typ=='vless' else '')+f'security=tls&sni={host}&type=ws&host={host}&path=%2F{typ}#{name}'
+def transport_link(typ,name,a,mode):
+ host=settings()['domain']; secret=a['secret']
+ grpc=mode=='grpc'; plain=mode=='plain'
+ port='80' if plain else '443'
+ network='grpc' if grpc else 'ws'
+ service=typ+'-grpc'
+ if typ=='vmess':
+  obj={'v':'2','ps':name+'-'+mode,'add':host,'port':port,'id':secret,'aid':'0','scy':'auto',
+       'net':network,'type':'none','host':host,'path':'' if grpc else '/'+typ,
+       'tls':'none' if plain else 'tls','sni':host}
+  if grpc: obj['path']=service
+  return 'vmess://'+base64.b64encode(json.dumps(obj,separators=(',',':')).encode()).decode()
+ from urllib.parse import urlencode,quote
+ params={'security':'none' if plain else 'tls','type':network}
+ if typ=='vless': params['encryption']='none'
+ if not plain: params['sni']=host
+ if grpc:
+  params['serviceName']=service;params['mode']='gun'
+ else:
+  params['host']=host;params['path']='/'+typ
+ return typ+'://'+secret+'@'+host+':'+port+'?'+urlencode(params)+'#'+quote(name+'-'+mode)
+
 def details(typ,name,a):
  host=settings()['domain']
  if typ in ('vmess','vless','trojan'):
@@ -86,11 +110,12 @@ def details(typ,name,a):
    ('User Quota',str(a.get('quota',0))+' GB (not enforced)'),
    ('User Ip',str(a.get('ip',0))+' IP (not enforced)'),
    ('Port TLS','443'),
+   ('Port none TLS','80'),
    ('id' if typ!='trojan' else 'Password',a['secret']),
    ('Security','auto' if typ=='vmess' else 'tls'),
    ('Network','ws'),
    ('Path','/'+typ),
-   ('ServiceName','Not configured (gRPC)'),
+   ('ServiceName',typ+'-grpc'),
   ]
   for key,value in rows:
    print(GREEN+key.ljust(19)+' : '+str(value)+RESET)
@@ -98,9 +123,11 @@ def details(typ,name,a):
   print(GREEN+'Link TLS'+RESET)
   print(GREEN+link(typ,name,a)+RESET)
   sep()
-  print(GREEN+'Link none TLS : Not configured'+RESET)
+  print(GREEN+'Link none TLS'+RESET)
+  print(GREEN+transport_link(typ,name,a,'plain')+RESET)
   sep()
-  print(GREEN+'Link GRPC     : Not configured'+RESET)
+  print(GREEN+'Link GRPC'+RESET)
+  print(GREEN+transport_link(typ,name,a,'grpc')+RESET)
   sep()
   print(GREEN+'Format OpenClash : Not configured'+RESET)
   sep()
