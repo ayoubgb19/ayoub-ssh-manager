@@ -152,8 +152,8 @@ def create(typ,trial=False):
  length=1 if trial else number('Days',30)
  if typ=='ssh':
   if run('id',name,capture_output=True).returncode==0: raise ValueError('Linux user exists')
-  password=getpass.getpass('Password (8+ characters): ')
-  if len(password)<8: raise ValueError('Password too short')
+  password=getpass.getpass('Password (2+ characters): ')
+  if len(password)<2: raise ValueError('Password must be at least 2 characters')
   r=run('useradd','-m','-s','/bin/bash',name)
   if r.returncode: raise RuntimeError('useradd failed')
   try:
