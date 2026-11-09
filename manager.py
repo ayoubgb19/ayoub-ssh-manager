@@ -146,22 +146,77 @@ def manage(typ):
   except Exception as e:
    print(RED+'ERROR: '+str(e)+RESET); pause()
 def dashboard():
- title('Welcome To SSH XRAY Manager')
- print('SYSTEM OS   :',run('uname','-s',capture_output=True).stdout.strip())
- print('DATE        :',datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S'))
- print('DOMAIN      :',settings()['domain'])
+ import platform, socket
+ os.system('clear')
+ d=db(); s=settings(); host=s.get('domain','localhost')
  try:
-  mem=pathlib.Path('/proc/meminfo').read_text().splitlines()
-  print('RAM         :',mem[0].split(':')[1].strip())
-  print('UPTIME      :',pathlib.Path('/proc/uptime').read_text().split()[0],'seconds')
- except OSError: pass
- print(BLUE+'─'*48+RESET)
- for k,v in db().items(): print(k.upper().ljust(13),':',len(v))
- print(BLUE+'─'*48+RESET)
- for s in ('ssh','ssh-websocket','xray','caddy'):
-  print(s.ljust(14),':',GREEN+'ON'+RESET if active(s) else RED+'OFF'+RESET)
- print(BLUE+'─'*48+RESET)
- print('[01] SSH MENU      [02] VMESS MENU\n[03] VLESS MENU    [04] TROJAN MENU\n[05] CHECK SERVICES\n[00] EXIT')
+  up=int(float(pathlib.Path('/proc/uptime').read_text().split()[0]))
+  uptime=f'{up//86400} days, {(up%86400)//3600} hours, {(up%3600)//60} minutes'
+ except Exception: uptime='N/A'
+ try:
+  m={}
+  for line in pathlib.Path('/proc/meminfo').read_text().splitlines():
+   k,v=line.split(':',1);m[k]=int(v.strip().split()[0])//1024
+  ram=f"{m.get('MemTotal',0)} / {m.get('MemTotal',0)-m.get('MemAvailable',0)} MB"
+ except Exception: ram='N/A'
+ try: cpu=f'{os.cpu_count()}'
+ except Exception: cpu='N/A'
+ try: load=f'{os.getloadavg()[0]:.2f}'
+ except Exception: load='N/A'
+ try:
+  ip=run('hostname','-I',capture_output=True).stdout.split()[0]
+ except Exception: ip='N/A'
+ def line(txt,width=59):print(BLUE+'│ '+txt.ljust(width-3)+'│'+RESET)
+ def frame(title_text):
+  print(BLUE+'╭'+'─'*57+'╮'+RESET)
+  print(BLUE+'│ '+RED+title_text.center(55)+BLUE+' │'+RESET)
+  print(BLUE+'╰'+'─'*57+'╯'+RESET)
+ def pair(label,value):
+  print(BLUE+'│ '+RED+'● '+BLUE+label.ljust(15)+GREEN+' = '+RESET+str(value))
+ print(GREEN+' ✧✧  AYOUB SSH XRAY MANAGER  ✧✧'+RESET)
+ print()
+ frame('Welcome To Ayoub SSH Xray Manager')
+ print(BLUE+'╭'+'─'*57+'╮'+RESET)
+ pair('SYSTEM OS',platform.platform())
+ pair('SYSTEM CORE',cpu)
+ pair('SERVER RAM',ram)
+ pair('LOADCPU',load)
+ pair('DATE',datetime.datetime.now().strftime('%d-%m-%Y'))
+ pair('TIME',datetime.datetime.now().strftime('%H:%M:%S'))
+ pair('UPTIME',uptime)
+ pair('IP VPS',ip)
+ pair('DOMAIN',host)
+ print(BLUE+'╰'+'─'*57+'╯'+RESET)
+ print('                 >>> INFORMATION ACCOUNT <<<')
+ print(BLUE+'          '+'─'*42+RESET)
+ for label,key in (('SSH/OPENVPN/UDP','ssh'),('VMESS/WS/GRPC','vmess'),('VLESS/WS/GRPC','vless'),('TROJAN/WS/GRPC','trojan')):
+  print(GREEN+'          '+label.ljust(20)+' = '+str(len(d[key]))+RESET)
+ print(BLUE+'          '+'─'*42+RESET)
+ print('                 >>> SERVICE STATUS <<<')
+ print(BLUE+'╭'+'─'*57+'╮'+RESET)
+ for items in (('SSH','ssh','XRAY','xray'),('SSH-WS','ssh-websocket','CADDY','caddy')):
+  left=GREEN+'ON'+RESET if active(items[1]) else RED+'OFF'+RESET
+  right=GREEN+'ON'+RESET if active(items[3]) else RED+'OFF'+RESET
+  print(BLUE+'│ '+RESET+items[0].ljust(13)+left+'     '+items[2].ljust(13)+right)
+ print(BLUE+'╰'+'─'*57+'╯'+RESET)
+ print(BLUE+'╭'+'─'*57+'╮'+RESET)
+ entries=[
+ ('[01] SSH MENU','[08] BACKUP / RESTORE','[15] MENU BOT'),
+ ('[02] VMESS MENU','[09] CPU / RAM','[16] CHANGE DOMAIN'),
+ ('[03] VLESS MENU','[10] RESTART ALL','[17] FIX SSL'),
+ ('[04] TROJAN MENU','[11] TELE BOT','[18] CHANGE BANNER'),
+ ('[05] SERVICE STATUS','[12] UPDATE MENU','[19] RESTART BANNER'),
+ ('[06] EXTRA TOOLS','[13] RUNNING','[20] SPEEDTEST'),
+ ('[07] INSTALL UDP','[14] INFO PORT','[21] EXTRA MENU')]
+ for row in entries:
+  print(BLUE+'│ '+RESET+' │ '.join(x.ljust(19) for x in row)+BLUE+'│'+RESET)
+ print(BLUE+'╰'+'─'*57+'╯'+RESET)
+ print(BLUE+'╭'+'─'*57+'╮'+RESET)
+ line('Script Version  =  AYOUB MANAGER 2026')
+ print(BLUE+'╰'+'─'*57+'╯'+RESET)
+ print()
+ print('Note: menus 06-21 are visual placeholders; only 01-05 work.')
+
 def main():
  if os.geteuid()!=0: sys.exit('Run: sudo menu')
  while True:
