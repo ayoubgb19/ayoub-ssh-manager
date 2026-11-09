@@ -83,7 +83,36 @@ $DOMAIN {
  handle @trojan {
   reverse_proxy 127.0.0.1:10003
  }
+ @vmess_grpc path /vmess-grpc/*
+ handle @vmess_grpc {
+  reverse_proxy h2c://127.0.0.1:10101
+ }
+ @vless_grpc path /vless-grpc/*
+ handle @vless_grpc {
+  reverse_proxy h2c://127.0.0.1:10102
+ }
+ @trojan_grpc path /trojan-grpc/*
+ handle @trojan_grpc {
+  reverse_proxy h2c://127.0.0.1:10103
+ }
  respond "Ayoub SSH Manager" 200
+}
+EOF
+cat >> "$caddy_tmp" <<EOF
+http://$DOMAIN {
+ @vmess path /vmess
+ handle @vmess {
+  reverse_proxy 127.0.0.1:10001
+ }
+ @vless path /vless
+ handle @vless {
+  reverse_proxy 127.0.0.1:10002
+ }
+ @trojan path /trojan
+ handle @trojan {
+  reverse_proxy 127.0.0.1:10003
+ }
+ respond "Ayoub SSH Manager HTTP" 200
 }
 EOF
 caddy validate --adapter caddyfile --config "$caddy_tmp"
@@ -111,5 +140,5 @@ systemctl enable --now ssh-websocket xray caddy
 systemctl restart ssh-websocket xray caddy
 printf '\nInstalled. Run: sudo menu\n'
 echo "Important: check SSH password authentication policy; default 22/TCP, HTTPS 443/TCP and ACME 80/TCP."
-echo "Quota/IP limits are NOT enforced. No gRPC, non-TLS, OpenVPN or Dropbear yet."
+echo "Quota/IP limits are NOT enforced. gRPC TLS and non-TLS WS configured; OpenVPN and Dropbear not implemented."
 echo "This prototype has not been tested end-to-end on a real VPS."
