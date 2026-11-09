@@ -73,17 +73,51 @@ def link(typ,name,a):
   return 'vmess://'+base64.b64encode(json.dumps(obj,separators=(',',':')).encode()).decode()
  return f'{typ}://{secret}@{host}:443?'+('encryption=none&' if typ=='vless' else '')+f'security=tls&sni={host}&type=ws&host={host}&path=%2F{typ}#{name}'
 def details(typ,name,a):
- title('Xray/'+typ.upper()+' Account' if typ!='ssh' else 'SSH ACCOUNT')
- print(GREEN+'Remarks       : '+name+'\nDomain        : '+settings()['domain']+
-       '\nExpiry        : '+a['expires']+'\nDays left     : '+str(max(0,days(a['expires'])))+RESET)
- print('IP limit      :',a.get('ip',0),'(not enforced)')
- if typ!='ssh':
-  print('Quota         :',a.get('quota',0),'GB (not enforced)')
-  print('Port TLS      : 443\nNetwork       : ws\nPath          : /'+typ+'\nLink TLS:')
+ host=settings()['domain']
+ if typ in ('vmess','vless','trojan'):
+  os.system('clear')
+  def sep(): print(BLUE+'◇'+'─'*43+'◇'+RESET)
+  sep()
+  print(GREEN+'Xray/'+typ.capitalize()+' Account'+RESET)
+  sep()
+  rows=[
+   ('Remarks',name),
+   ('Domain',host),
+   ('User Quota',str(a.get('quota',0))+' GB (not enforced)'),
+   ('User Ip',str(a.get('ip',0))+' IP (not enforced)'),
+   ('Port TLS','443'),
+   ('id' if typ!='trojan' else 'Password',a['secret']),
+   ('Security','auto' if typ=='vmess' else 'tls'),
+   ('Network','ws'),
+   ('Path','/'+typ),
+   ('ServiceName','Not configured (gRPC)'),
+  ]
+  for key,value in rows:
+   print(GREEN+key.ljust(19)+' : '+str(value)+RESET)
+  sep()
+  print(GREEN+'Link TLS'+RESET)
   print(GREEN+link(typ,name,a)+RESET)
+  sep()
+  print(GREEN+'Link none TLS : Not configured'+RESET)
+  sep()
+  print(GREEN+'Link GRPC     : Not configured'+RESET)
+  sep()
+  print(GREEN+'Format OpenClash : Not configured'+RESET)
+  sep()
+  print(GREEN+'Aktif Selama   : '+str(max(0,days(a['expires'])))+' Hari'+RESET)
+  print(GREEN+'Dibuat Pada    : '+a.get('created',datetime.date.today().isoformat())+RESET)
+  print(GREEN+'Berakhir Pada  : '+a['expires']+RESET)
+  sep()
+  print(GREEN+'AYOUB SSH XRAY MANAGER'+RESET)
+  input(GREEN+'\nPress any key to back on menu'+RESET)
  else:
-  print('SSH port      : 22\nSSH WS        : wss://'+settings()['domain']+'/ssh')
- pause()
+  title('SSH ACCOUNT')
+  print(GREEN+'Username      : '+name+'\nHost          : '+host+
+        '\nPort OpenSSH  : 22\nPort SSH WS   : 443 (/ssh)'+
+        '\nExpiry        : '+a['expires']+
+        '\nIP limit      : '+str(a.get('ip',0))+' (not enforced)'+RESET)
+  pause()
+
 def create(typ,trial=False):
  name=username(); d=db()
  if name in d[typ]: raise ValueError('Account exists')
@@ -100,10 +134,10 @@ def create(typ,trial=False):
    if run('chage','-E',expiry(length),name).returncode: raise RuntimeError('chage failed')
   except Exception:
    run('userdel','-r',name); raise
-  a={'expires':expiry(length),'ip':ip}; d[typ][name]=a; save(DB,d)
+  a={'expires':expiry(length),'created':datetime.date.today().isoformat(),'ip':ip}; d[typ][name]=a; save(DB,d)
  else:
   quota=number('Quota GB (not enforced)',100)
-  a={'expires':expiry(length),'ip':ip,'quota':quota,
+  a={'expires':expiry(length),'created':datetime.date.today().isoformat(),'ip':ip,'quota':quota,
      'secret':secrets.token_urlsafe(24) if typ=='trojan' else str(uuid.uuid4())}
   d[typ][name]=a; apply(d); save(DB,d)
  details(typ,name,a)
